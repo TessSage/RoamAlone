@@ -5,7 +5,9 @@ import time
 from flask import Flask, render_template, session, request
 from flask_socketio import SocketIO, emit, join_room, leave_room, \
     close_room, rooms, disconnect
-import base64
+import datetime
+import RPi.GPIO as GPIO
+
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
 # different async modes, or leave it set to None for the application to choose
@@ -17,20 +19,40 @@ app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, async_mode=async_mode)
 thread = None
 thread_lock = Lock()
-
-
+global url_index
+url_index=0
+def sensorCallback(channel):
+  # Called if sensor output changes
+  timestamp = time.time()
+  global url_index
+  stamp = datetime.datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
+  if GPIO.input(channel):
+    # No magnet
+    message="Sensor High " + stamp
+    print("Sensor HIGH " + stamp)
+    #url_index+=1
+  else:
+    # Magnet
+    message = "Sensor LOW " + stamp
+    print("Sensor LOW " + stamp)
+    url_index+=1
+    
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(17 , GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.add_event_detect(17, GPIO.BOTH, callback=sensorCallback, bouncetime=200)
+  
 def background_thread():
     """Example of how to send server generated events to clients."""
     count = 0
+    global url_index
     #file =  '/home/pi/RoamAlone/practice_data_latlong.csv'
     #df = pd.read_csv(file)
-    url_index=0
-    with open('/home/pi/RoamAlone/urllist.txt','r') as f:
+    with open('/home/pi/RoamAlone/testing_url_list.txt','r') as f:
         content = f.read()
         contentlist = content.split('\n')
     while True:
-        socketio.sleep(4)
-        url_index += 1
+        socketio.sleep(.5)
+        #url_index += 1
         if url_index > len(contentlist)-1:
             url_index=0
             

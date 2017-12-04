@@ -146,28 +146,59 @@ url_base = 'https://maps.googleapis.com/maps/api/streetview?'
 stretview_key = 'AIzaSyCHlfN7dKzFkNpujq8wRoDNHRJNJYq37Z8'
 
 f = open('testing_url_list.txt', 'w')
+wheel_cir = 7/3.28 # meters
 
+correct_dis_latlong=[]
 for i in range(0, len(mylatlongpairs)-1):
-    bearing = round(calculate_initial_compass_bearing(mylatlongpairs[i],mylatlongpairs[i+1]))
+	dis =distance(mylatlongpairs[i][0],mylatlongpairs[i][1],mylatlongpairs[i+1][0],mylatlongpairs[i+1][1])
+	if dis >= 1.05*wheel_cir or dis <= 0.95*wheel_cir:
+	
+		factor = round(dis/wheel_cir)
+		if factor > 4:
+			factor = 4
+		if factor % 2 ==0:
+			tot_pts = factor+1
+		else:
+			tot_pts = factor
+		correct_dis_latlong.append((mylatlongpairs[i][0],mylatlongpairs[i][1]))
+		midlat = (mylatlongpairs[i][0]+mylatlongpairs[i+1][0])/2
+		midlong = (mylatlongpairs[i][1]+mylatlongpairs[i+1][1])/2
+		if tot_pts == 3:
+			correct_dis_latlong.append((midlat, midlong))
+		else:
+			midlat1 = (mylatlongpairs[i][0]+midlat)/2
+			midlong1 = (mylatlongpairs[i][1]+midlong)/2
+			correct_dis_latlong.append((midlat1, midlong1))
+			midlat2 = (midlat+mylatlongpairs[i+1][0])/2
+			midlong2 = (midlong+mylatlongpairs[i+1][1])/2
+			correct_dis_latlong.append((midlat, midlong))
+			correct_dis_latlong.append((midlat2, midlong2))
+correct_dis_latlong.append((mylatlongpairs[i+1][0],mylatlongpairs[i+1][1]))
+			
+
+for i in range(0, len(correct_dis_latlong)-1):
+    bearing = round(calculate_initial_compass_bearing(correct_dis_latlong[i],correct_dis_latlong[i+1]))
     #print('bearing',bearing)
-    dis =distance(mylatlongpairs[i][0],mylatlongpairs[i][1],mylatlongpairs[i+1][0],mylatlongpairs[i+1][1])
+    dis =distance(correct_dis_latlong[i][0],correct_dis_latlong[i][1],correct_dis_latlong[i+1][0],correct_dis_latlong[i+1][1])
     #print('distance: ', dis)
-    elevation1 = PE(mylatlongpairs[i][0],mylatlongpairs[i][1]).get_elevation()
+
+    
+    elevation1 = PE(correct_dis_latlong[i][0],correct_dis_latlong[i][1]).get_elevation()
     # elevation1 = PE1.return_elevation()
-    elevation2 = PE(mylatlongpairs[i+1][0],mylatlongpairs[i+1][1]).get_elevation()
+    elevation2 = PE(correct_dis_latlong[i+1][0],correct_dis_latlong[i+1][1]).get_elevation()
     # elevation2 = PE2.return_elevation()
     elevationgain = elevation2-elevation1
     #print('elevation gain', elevationgain)
     pitch = round(math.degrees(math.asin(elevationgain/dis)),3) # check units!!
      # lat long distance elevationgain pitch bearing
-    myinfolist.append([mylatlongpairs[i][0],mylatlongpairs[i][1], dis, elevationgain, pitch, bearing])
-    url = url_base + 'location=' + str(mylatlongpairs[i][0]) +',' +str(mylatlongpairs[i][1])
+    myinfolist.append([correct_dis_latlong[i][0],correct_dis_latlong[i][1], dis, elevationgain, pitch, bearing])
+    url = url_base + 'location=' + str(round(correct_dis_latlong[i][0],6)) +',' +str(round(correct_dis_latlong[i][1],6))
     url = url + '&heading=' + str(bearing) + '&pitch=' + str(pitch) + '&fov=120&size=600x400' +'&key='+stretview_key
-    f.write(url + '\n')
+    f.write(url +';'+str(100*elevationgain/dis) +'\n')
     print(url)
     
-myinfolist.append([mylatlongpairs[i+1][0],mylatlongpairs[i+1][1],dis, elevationgain, pitch, bearing])
-url = url_base + 'location=' + str(mylatlongpairs[i+1][0]) +',' +str(mylatlongpairs[i+1][1])
+myinfolist.append([correct_dis_latlong[i+1][0],correct_dis_latlong[i+1][1],dis, elevationgain, pitch, bearing])
+url = url_base + 'location=' + str(round(correct_dis_latlong[i+1][0],6)) +',' +str(round(correct_dis_latlong[i+1][1],6))
 url = url + '&heading=' + str(bearing) + '&pitch=' + str(pitch) + '&fov=120&size=600x400' + '&key='+stretview_key
-f.write(url+ '\n')
+f.write(url+';'+str(100*elevationgain/dis)+'\n')
 f.close()

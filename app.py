@@ -7,6 +7,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room, \
     close_room, rooms, disconnect
 import datetime
 import RPi.GPIO as GPIO
+import PWMClass
 
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
@@ -40,28 +41,38 @@ def sensorCallback(channel):
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(17 , GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.add_event_detect(17, GPIO.BOTH, callback=sensorCallback, bouncetime=200)
+
+global pwm
+pwm = PWMClass.PWM(channel=19) # set up the output channel 
+pwm.configure_PWM(2)
   
 def background_thread():
     """Example of how to send server generated events to clients."""
     count = 0
     global url_index
+    global pwm
     #file =  '/home/pi/RoamAlone/practice_data_latlong.csv'
     #df = pd.read_csv(file)
-    with open('/home/pi/RoamAlone/testing_url_list.txt','r') as f:
+    contentlist=[]
+    with open('/home/pi/RoamAlone/Code/RoamAlone/testing_url_list.txt','r') as f:
         content = f.read()
-        contentlist = content.split('\n')
+        contentsplit = content.split('\n')
+    for line in contentsplit:
+        contentlist.append(line.split(';'))
     while True:
         socketio.sleep(.5)
+        pwm.change_PW_elevation_gain(float(contentlist[url_index][1]))
+        print(contentlist[url_index][1])
         #url_index += 1
         if url_index > len(contentlist)-1:
             url_index=0
-            
-        url = contentlist[url_index]
+        
+        url = contentlist[url_index][0]
         if url == "":
             url_index += 1
             if url_index > len(contentlist)-1:
                 url_index=0
-            url = contentlist[url_index]
+            url = contentlist[url_index][0]
         #url = '"' + url + '"'
         print('\n\nURLSENT: \n', url)
 ##        append = 'message ' +str(count)

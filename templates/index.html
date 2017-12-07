@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-    <title>Flask-SocketIO Test</title>
+    <title>Roam Alone</title>
     <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
     <script type="text/javascript" charset="utf-8">
@@ -46,6 +46,7 @@
             window.setInterval(function() {
                 start_time = (new Date).getTime();
                 socket.emit('my_ping');
+                socket.emit('my_trip_data');
             }, 1000);
 
             // Handler for the "pong" message. When the pong is received, the
@@ -59,6 +60,16 @@
                 for (var i = 0; i < ping_pong_times.length; i++)
                     sum += ping_pong_times[i];
                 $('#ping-pong').text(Math.round(10 * sum / ping_pong_times.length) / 10);
+            });
+
+	    // BEGINNING OF THE POWER DISTANCE AND CALORIES DATA
+
+            // Handler for the data return message with power, distance, time. 
+            socket.on('trip_data', function(data) {
+                $('#power').text(data.power);
+                $('#distance').text(data.distance);
+                $('#calories').text(data.calories);
+                $('#duration').text(data.duration);
             });
 
             // Handlers for the different forms in the page.
@@ -86,12 +97,15 @@
 </head>
 <body>
     <h1>Roam Alone</h1>
-    <p>Async mode is: <b>{{ async_mode }}</b></p>
     <p>Average ping/pong latency: <b><span id="ping-pong"></span>ms</b></p>
 	<p><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6vcG2VvGZlZ8rBYgYhNQCteYVVXwU2K8iiDiOTnCLN2kAbW6R"/></p>
     <h2>Receive:</h2>
+    <p>Average Power: <b><span id="power"></span> Watts</b></p>
+    <p>Total Distance Traveled: <b><span id="distance"></span> miles</b></p>
+    <p>Duration: <b><span id="duration"></span> minutes</b></p>
+    <p>Average calories burned: <b><span id="calories"></span> calories</b></p> 
     <img id="myimage" src="https://www.google.com/imgres?imgurl=https%3A%2F%2Fpbs.twimg.com%2Fmedia%2FClH8MiWUgAAkIqr.jpg&imgrefurl=https%3A%2F%2Ftwitter.com%2Fprogramminmemes&docid=nWZ3CzYp1J8J2M&tbnid=845FbM8Q3lymrM%3A&vet=10ahUKEwiYi6mBtt3XAhXKRN8KHa1MAb4QMwhCKAQwBA..i&w=552&h=414&bih=852&biw=897&q=programming%20memes&ved=0ahUKEwiYi6mBtt3XAhXKRN8KHa1MAb4QMwhCKAQwBA&iact=mrc&uact=8
-" width="250" height="250" />
+" width="600" height="250" />
 <div id="log"></div>
 
 <h2>Send:</h2>

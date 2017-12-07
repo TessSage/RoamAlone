@@ -19,6 +19,6 @@ class PWM():
               duty_cycle=100
         else:
               duty_cycle = 100-(20/3)*elevation_gain
-        print(duty_cycle)
+        #print(duty_cycle)
         self.PulseController.ChangeDutyCycle(int(duty_cycle))
         

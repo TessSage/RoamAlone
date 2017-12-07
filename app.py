@@ -37,6 +37,12 @@ def sensorCallback(channel):
     message = "Sensor LOW " + stamp
     print("Sensor LOW " + stamp)
     url_index+=1
+    global rotation_index
+    global begin_time
+    if rotation_index ==0:
+         begin_time = time.time()
+    rotation_index+=1
+
     
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(17 , GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -45,12 +51,47 @@ GPIO.add_event_detect(17, GPIO.BOTH, callback=sensorCallback, bouncetime=200)
 global pwm
 pwm = PWMClass.PWM(channel=19) # set up the output channel 
 pwm.configure_PWM(2)
-  
+
+global average_power, total_average_power
+average_power = 0
+global temp_power
+temp_power = []
+total_average_power = []
+global distance
+distance=0
+global calories
+calories=0
+global duration
+duration=0
+global rotation_index
+rotation_index=0
+global begin_time
+begin_time = time.time()
+
+import automationhat
+
+def update_power_data(reset=False):
+    global average_power, total_average_power, temp_power
+    voltage = automationhat.analog.two.read()
+    temp_power.append(voltage*voltage/(0.6))
+    average_power = sum(temp_power)/len(temp_power)
+    total_average_power.append(average_power)
+    if reset:
+        temp_power=[]
+
+def update_trip_data():
+    global calories, distance, duration, begin_time, rotation_index, total_average_power
+    distance = round(3.14 * 2.2 * rotation_index/5280,2)
+    duration = (round((time.time()-begin_time)/60,2)) 
+    calories =  duration*60*sum(total_average_power)/len(total_average_power)
+
+
 def background_thread():
     """Example of how to send server generated events to clients."""
     count = 0
     global url_index
     global pwm
+    
     #file =  '/home/pi/RoamAlone/practice_data_latlong.csv'
     #df = pd.read_csv(file)
     contentlist=[]
@@ -59,10 +100,18 @@ def background_thread():
         contentsplit = content.split('\n')
     for line in contentsplit:
         contentlist.append(line.split(';'))
+    time_index = 0
     while True:
-        socketio.sleep(.5)
+        socketio.sleep(.05)
+        time_index+=1
+        if time_index <9:
+            update_power_data()
+        else:
+            time_index =0
+            update_power_data(reset=True)
+        update_trip_data()
         pwm.change_PW_elevation_gain(float(contentlist[url_index][1]))
-        print(contentlist[url_index][1])
+        #print(contentlist[url_index][1])
         #url_index += 1
         if url_index > len(contentlist)-1:
             url_index=0
@@ -74,7 +123,7 @@ def background_thread():
                 url_index=0
             url = contentlist[url_index][0]
         #url = '"' + url + '"'
-        print('\n\nURLSENT: \n', url)
+        #print('\n\nURLSENT: \n', url)
 ##        append = 'message ' +str(count)
         count += 1
         socketio.emit('image',{'data': (url), 'count': count},
@@ -147,6 +196,14 @@ def disconnect_request():
 @socketio.on('my_ping', namespace='/test')
 def ping_pong():
     emit('my_pong')
+
+@socketio.on('my_trip_data', namespace='/test')
+def trip_data():
+    global average_power
+    global distance
+    global calories
+    global duration
+    emit('trip_data', {'power': str(average_power), 'distance': str(distance),'calories': str(calories), 'duration': str(duration)}, namespace='/test')
 
 
 @socketio.on('connect', namespace='/test')

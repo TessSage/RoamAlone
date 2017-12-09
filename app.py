@@ -29,13 +29,10 @@ def sensorCallback(channel):
   stamp = datetime.datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
   if GPIO.input(channel):
     # No magnet
-    message="Sensor High " + stamp
-    print("Sensor HIGH " + stamp)
+    pass
     #url_index+=1
   else:
     # Magnet
-    message = "Sensor LOW " + stamp
-    print("Sensor LOW " + stamp)
     url_index+=1
     global rotation_index
     global begin_time
@@ -67,42 +64,64 @@ global rotation_index
 rotation_index=0
 global begin_time
 begin_time = time.time()
+global file_change, url_file
+file_change = False
+url_file = '/home/pi/RoamAlone/Code/RoamAlone/testing_url_list.txt'
 
-import automationhat
-
+#import automationhat
+import os, fnmatch
+def get_routes():
+    wd = r'/home/pi/RoamAlone/code1/RoamAlone/routes'
+    available_routes = []
+    route_str = ''
+    index = 1
+    for root, dirnames, filenames in os.walk(wd):
+        for filename in fnmatch.filter(filenames, '*.txt'):
+            #available_routes.append(filename)
+            print(filename)
+            socketio.emit('routes', {'routes':filename, 'count':index})
+            index+=1
+            #route_str += filename +'\n'
+    
 def update_power_data(reset=False):
-    global average_power, total_average_power, temp_power
-    voltage = automationhat.analog.two.read()
-    temp_power.append(voltage*voltage/(0.6))
-    average_power = sum(temp_power)/len(temp_power)
+    global average_power, total_average_power, temp_power, pwm
+    
+    resistance = pwm.DutyCycle*5+5
+    voltage = 18#automationhat.analog.two.read()
+    temp_power.append(voltage*voltage/(resistance))
+    average_power = round(sum(temp_power)/len(temp_power),2)
     total_average_power.append(average_power)
     if reset:
         temp_power=[]
 
 def update_trip_data():
     global calories, distance, duration, begin_time, rotation_index, total_average_power
-    distance = round(3.14 * 2.2 * rotation_index/5280,2)
+    distance = round(3.14 * 2.2 * rotation_index/1600,2)
     duration = (round((time.time()-begin_time)/60,2)) 
-    calories =  duration*60*sum(total_average_power)/len(total_average_power)
+    calories =  round(duration*60*sum(total_average_power)/(len(total_average_power)*4184),2)
 
+def read_url_file(file='/home/pi/RoamAlone/Code/RoamAlone/testing_url_list.txt'):
+    contentlist=[]
+    with open(file,'r') as f:
+        content = f.read()
+        contentsplit = content.split('\n')
+    for line in contentsplit:
+        contentlist.append(line.split(';'))
+    return contentlist
 
 def background_thread():
     """Example of how to send server generated events to clients."""
     count = 0
     global url_index
-    global pwm
+    global pwm, file_change
     
-    #file =  '/home/pi/RoamAlone/practice_data_latlong.csv'
-    #df = pd.read_csv(file)
-    contentlist=[]
-    with open('/home/pi/RoamAlone/Code/RoamAlone/testing_url_list.txt','r') as f:
-        content = f.read()
-        contentsplit = content.split('\n')
-    for line in contentsplit:
-        contentlist.append(line.split(';'))
+    contentlist = read_url_file()
+
     time_index = 0
     while True:
         socketio.sleep(.05)
+        if file_change:
+            contentlist = read_url_file(url_file)
         time_index+=1
         if time_index <9:
             update_power_data()
@@ -134,6 +153,15 @@ def background_thread():
 def index():
     return render_template('index.html', async_mode=socketio.async_mode)
 
+
+@socketio.on('file_choose', namespace='/test')
+def file_change(message):
+    global file_change, url_file
+    session['receive_count'] = session.get('receive_count', 0) + 1
+    url_file = r'/home/pi/RoamAlone/code1/RoamAlone/routes/' + message['data'] + '.txt'
+    file_change = True
+    emit('my_response',
+         {'data': message['data'], 'count': session['receive_count']})
 
 @socketio.on('my_event', namespace='/test')
 def test_message(message):
@@ -213,6 +241,7 @@ def test_connect():
         if thread is None:
             thread = socketio.start_background_task(target=background_thread)
     emit('my_response', {'data': 'Connected', 'count': 0})
+    get_routes()
 
 
 @socketio.on('disconnect', namespace='/test')

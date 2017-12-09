@@ -6,6 +6,7 @@ class PWM():
     def __init__(self, channel):
         self.Channel = channel
         self.PulseController = ''
+        self.DutyCycle=0
 
     def configure_PWM(self, frequency):
         IO.setmode(IO.BCM)
@@ -16,9 +17,9 @@ class PWM():
 
     def change_PW_elevation_gain(self, elevation_gain):
         if elevation_gain <0:
-              duty_cycle=100
+              self.DutyCycle=0
         else:
-              duty_cycle = 100-(20/3)*elevation_gain
+              self.DutyCycle = (20/3)*elevation_gain
         #print(duty_cycle)
-        self.PulseController.ChangeDutyCycle(int(duty_cycle))
+        self.PulseController.ChangeDutyCycle(int(self.DutyCycle))
         

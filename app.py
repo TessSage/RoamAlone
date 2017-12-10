@@ -34,10 +34,11 @@ def sensorCallback(channel):
   else:
     # Magnet
     url_index+=1
-    global rotation_index
+    global rotation_index, voltage
     global begin_time
     if rotation_index ==0:
          begin_time = time.time()
+         voltage = 18
     rotation_index+=1
 
     
@@ -62,6 +63,8 @@ global duration
 duration=0
 global rotation_index
 rotation_index=0
+global voltage
+voltage = 0
 global begin_time
 begin_time = time.time()
 global file_change, url_file
@@ -85,11 +88,16 @@ def get_routes():
     
 def update_power_data(reset=False):
     global average_power, total_average_power, temp_power, pwm
-    
-    resistance = (5e130)*pwm.DutyCycle**(-65.34)
-    voltage = 18#automationhat.analog.two.read()
+    if pwm.DutyCycle <= 1:
+        resistance = 5e6
+    else:
+        resistance = (5e130)*pwm.DutyCycle**(-65.34)
+    global voltage#automationhat.analog.two.read()
     temp_power.append(voltage*voltage/(resistance))
-    average_power = round(sum(temp_power)/len(temp_power),2)
+    if voltage ==0:
+        average_power =0
+    else:
+        average_power = round(sum(temp_power)/len(temp_power),2)+ 14
     total_average_power.append(average_power)
     if reset:
         temp_power=[]

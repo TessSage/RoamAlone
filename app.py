@@ -47,7 +47,7 @@ GPIO.add_event_detect(17, GPIO.BOTH, callback=sensorCallback, bouncetime=200)
 
 global pwm
 pwm = PWMClass.PWM(channel=19) # set up the output channel 
-pwm.configure_PWM(2)
+pwm.configure_PWM(5) #set frequency
 
 global average_power, total_average_power
 average_power = 0
@@ -86,7 +86,7 @@ def get_routes():
 def update_power_data(reset=False):
     global average_power, total_average_power, temp_power, pwm
     
-    resistance = pwm.DutyCycle*5+5
+    resistance = (5e130)*pwm.DutyCycle**(-65.34)
     voltage = 18#automationhat.analog.two.read()
     temp_power.append(voltage*voltage/(resistance))
     average_power = round(sum(temp_power)/len(temp_power),2)

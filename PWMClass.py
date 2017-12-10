@@ -16,10 +16,10 @@ class PWM():
         self.PulseController.start(0)
 
     def change_PW_elevation_gain(self, elevation_gain):
-        if elevation_gain <0:
+        if elevation_gain <=0:
               self.DutyCycle=0
         else:
-              self.DutyCycle = (20/3)*elevation_gain
+              self.DutyCycle = (-.0486)*elevation_gain**2+0.9589*elevation_gain+95.101
         #print(duty_cycle)
-        self.PulseController.ChangeDutyCycle(int(self.DutyCycle))
+        self.PulseController.ChangeDutyCycle((self.DutyCycle))
         
